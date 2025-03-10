@@ -147,7 +147,7 @@ function App() {
                 >
                   {connector.name === "WalletConnect" && "🔗 "}
                   {connector.name === "Coinbase Wallet" && "💰 "}
-                  {connector.name === "Injected" && "🦊 "}
+                  {connector.name === "Injected" && "🔑 "}
                   {connector.name}
                 </button>
               ))}
