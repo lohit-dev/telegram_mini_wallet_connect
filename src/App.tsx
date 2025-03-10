@@ -1,10 +1,12 @@
 import { useEffect } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
+import { defaultChain } from "./wagmi";
 
 function App() {
   const { address, isConnected } = useAccount();
   const { connectors, connect } = useConnect();
   const { disconnect } = useDisconnect();
+  const chainId = useChainId() || defaultChain.id;
 
   useEffect(() => {
     // Initialize Telegram WebApp
@@ -14,11 +16,10 @@ function App() {
     if (isConnected && address) {
       window.Telegram.WebApp.MainButton.text = "CONFIRM WALLET";
       window.Telegram.WebApp.MainButton.onClick(() => {
-        // Send the connected wallet address back to Telegram
         window.Telegram.WebApp.sendData(
           JSON.stringify({
-            type: "wallet_connected",
             address: address,
+            chainId: chainId.toString(),
           })
         );
         window.Telegram.WebApp.close();
@@ -33,7 +34,7 @@ function App() {
       window.Telegram.WebApp.MainButton.hide();
       window.Telegram.WebApp.MainButton.onClick(() => {});
     };
-  }, [isConnected, address]);
+  }, [isConnected, address, chainId]);
 
   return (
     <div className="telegram-container">

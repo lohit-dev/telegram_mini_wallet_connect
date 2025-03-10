@@ -7,6 +7,8 @@ import {
   walletConnect,
 } from "wagmi/connectors";
 
+const defaultChain = sepolia;
+
 export const config = createConfig({
   chains: [mainnet, sepolia],
   connectors: [
@@ -34,3 +36,5 @@ declare module "wagmi" {
     config: typeof config;
   }
 }
+
+export { defaultChain };
