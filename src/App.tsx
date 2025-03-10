@@ -45,7 +45,6 @@ function App() {
   const { disconnect } = useDisconnect();
   const chainId = useChainId() || defaultChain.id;
   const [isWebAppReady, setIsWebAppReady] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>("");
 
   // Initialize Telegram WebApp
   useEffect(() => {
@@ -62,7 +61,6 @@ function App() {
         isExpanded: tg?.isExpanded,
       };
       console.log("Debug Info:", info);
-      setDebugInfo(JSON.stringify(info, null, 2));
     };
 
     if (tg) {
@@ -75,11 +73,9 @@ function App() {
         logDebugInfo();
       } catch (error) {
         console.error("Error initializing Telegram WebApp:", error);
-        setDebugInfo("Error: " + String(error));
       }
     } else {
       console.error("Telegram WebApp not available");
-      setDebugInfo("Error: Telegram WebApp not available");
     }
   }, []);
 
@@ -110,7 +106,6 @@ function App() {
           }, 100);
         } catch (error) {
           console.error("Failed to send data:", error);
-          setDebugInfo("Send Error: " + String(error));
         }
       };
 
