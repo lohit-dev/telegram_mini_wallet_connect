@@ -2,6 +2,25 @@ import { useEffect } from "react";
 import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
 import { defaultChain } from "./wagmi";
 
+declare global {
+  interface Window {
+    Telegram: {
+      WebApp: {
+        ready: () => void;
+        close: () => void;
+        MainButton: {
+          text: string;
+          show: () => void;
+          hide: () => void;
+          onClick: (callback: () => void) => void;
+          offClick: (callback: () => void) => void;
+        };
+        sendData: (data: string) => void;
+      };
+    };
+  }
+}
+
 function App() {
   const { address, isConnected } = useAccount();
   const { connectors, connect } = useConnect();
@@ -10,29 +29,58 @@ function App() {
 
   useEffect(() => {
     // Initialize Telegram WebApp
-    window.Telegram.WebApp.ready();
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      console.log("Telegram WebApp initialized");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!window.Telegram?.WebApp) {
+      console.error("Telegram WebApp not found");
+      return;
+    }
+
+    const webApp = window.Telegram.WebApp;
 
     // Set up MainButton for connected state
     if (isConnected && address) {
-      window.Telegram.WebApp.MainButton.text = "CONFIRM WALLET";
-      window.Telegram.WebApp.MainButton.onClick(() => {
-        window.Telegram.WebApp.sendData(
-          JSON.stringify({
-            address: address,
-            chainId: chainId.toString(),
-          })
-        );
-        window.Telegram.WebApp.close();
-      });
-      window.Telegram.WebApp.MainButton.show();
+      console.log("Wallet connected, setting up MainButton");
+      webApp.MainButton.text = "CONFIRM WALLET";
+
+      const handleClick = () => {
+        console.log("MainButton clicked, sending data:", {
+          address,
+          chainId: chainId.toString(),
+        });
+
+        try {
+          webApp.sendData(
+            JSON.stringify({
+              address: address,
+              chainId: chainId.toString(),
+            })
+          );
+          console.log("Data sent successfully");
+          webApp.close();
+        } catch (error) {
+          console.error("Error sending data:", error);
+        }
+      };
+
+      webApp.MainButton.onClick(handleClick);
+      webApp.MainButton.show();
     } else {
-      window.Telegram.WebApp.MainButton.hide();
+      console.log("Wallet not connected, hiding MainButton");
+      webApp.MainButton.hide();
     }
 
     return () => {
       // Cleanup
-      window.Telegram.WebApp.MainButton.hide();
-      window.Telegram.WebApp.MainButton.onClick(() => {});
+      if (window.Telegram?.WebApp) {
+        webApp.MainButton.hide();
+        webApp.MainButton.offClick(() => {});
+      }
     };
   }, [isConnected, address, chainId]);
 
@@ -66,6 +114,9 @@ function App() {
             <h2>Connected Wallet</h2>
             <p className="address">
               {address?.slice(0, 6)}...{address?.slice(-4)}
+            </p>
+            <p className="network">
+              Network: {chainId === 1 ? "Mainnet" : "Sepolia"}
             </p>
             <button onClick={() => disconnect()} className="disconnect-button">
               Disconnect
