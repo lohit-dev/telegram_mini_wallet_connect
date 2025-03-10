@@ -170,24 +170,6 @@ function App() {
             </button>
           </div>
         )}
-
-        {/* Debug Information */}
-        {debugInfo && (
-          <div
-            className="debug-info"
-            style={{
-              marginTop: "20px",
-              padding: "10px",
-              backgroundColor: "#f5f5f5",
-              borderRadius: "5px",
-              fontSize: "12px",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            <h3>Debug Info:</h3>
-            <pre>{debugInfo}</pre>
-          </div>
-        )}
       </div>
     </div>
   );
