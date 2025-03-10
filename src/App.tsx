@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
 import { defaultChain } from "./wagmi";
 
@@ -14,8 +14,26 @@ declare global {
           hide: () => void;
           onClick: (callback: () => void) => void;
           offClick: (callback: () => void) => void;
+          enable: () => void;
+          disable: () => void;
         };
         sendData: (data: string) => void;
+        initData: string;
+        initDataUnsafe: {
+          query_id: string;
+          user: {
+            id: number;
+            first_name: string;
+            last_name?: string;
+            username?: string;
+            language_code?: string;
+          };
+          auth_date: string;
+          hash: string;
+        };
+        isExpanded: boolean;
+        expand: () => void;
+        platform: string;
       };
     };
   }
@@ -26,68 +44,94 @@ function App() {
   const { connectors, connect } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId() || defaultChain.id;
+  const [isWebAppReady, setIsWebAppReady] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>("");
 
+  // Initialize Telegram WebApp
   useEffect(() => {
-    // Initialize Telegram WebApp
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.ready();
-      console.log("Telegram WebApp initialized");
+    const tg = window.Telegram?.WebApp;
+
+    // Debug logging
+    const logDebugInfo = () => {
+      const info = {
+        isTelegramAvailable: !!window.Telegram,
+        isWebAppAvailable: !!window.Telegram?.WebApp,
+        platform: tg?.platform,
+        initData: tg?.initData,
+        initDataUnsafe: tg?.initDataUnsafe,
+        isExpanded: tg?.isExpanded,
+      };
+      console.log("Debug Info:", info);
+      setDebugInfo(JSON.stringify(info, null, 2));
+    };
+
+    if (tg) {
+      console.log("Initializing Telegram WebApp");
+      try {
+        tg.ready();
+        tg.expand();
+        setIsWebAppReady(true);
+        console.log("Telegram WebApp initialized successfully");
+        logDebugInfo();
+      } catch (error) {
+        console.error("Error initializing Telegram WebApp:", error);
+        setDebugInfo("Error: " + String(error));
+      }
+    } else {
+      console.error("Telegram WebApp not available");
+      setDebugInfo("Error: Telegram WebApp not available");
     }
   }, []);
 
+  // Handle wallet connection state
   useEffect(() => {
-    if (!window.Telegram?.WebApp) {
-      console.error("Telegram WebApp not found");
-      return;
-    }
+    const tg = window.Telegram?.WebApp;
+    if (!tg || !isWebAppReady) return;
 
-    const webApp = window.Telegram.WebApp;
-
-    // Set up MainButton for connected state
     if (isConnected && address) {
-      console.log("Wallet connected, setting up MainButton");
-      webApp.MainButton.text = "CONFIRM WALLET";
+      console.log("Wallet connected:", { address, chainId });
+      tg.MainButton.text = "CONFIRM WALLET";
+      tg.MainButton.show();
+      tg.MainButton.enable();
 
-      const handleClick = () => {
-        console.log("MainButton clicked, sending data:", {
-          address,
+      const handleConfirm = () => {
+        const data = {
+          address: address,
           chainId: chainId.toString(),
-        });
+        };
+        console.log("Sending data to Telegram:", data);
 
         try {
-          webApp.sendData(
-            JSON.stringify({
-              address: address,
-              chainId: chainId.toString(),
-            })
-          );
+          tg.sendData(JSON.stringify(data));
           console.log("Data sent successfully");
-          webApp.close();
+          // Add a small delay before closing
+          setTimeout(() => {
+            tg.close();
+          }, 100);
         } catch (error) {
-          console.error("Error sending data:", error);
+          console.error("Failed to send data:", error);
+          setDebugInfo("Send Error: " + String(error));
         }
       };
 
-      webApp.MainButton.onClick(handleClick);
-      webApp.MainButton.show();
+      tg.MainButton.onClick(handleConfirm);
     } else {
-      console.log("Wallet not connected, hiding MainButton");
-      webApp.MainButton.hide();
+      tg.MainButton.hide();
     }
 
     return () => {
-      // Cleanup
-      if (window.Telegram?.WebApp) {
-        webApp.MainButton.hide();
-        webApp.MainButton.offClick(() => {});
+      if (tg) {
+        tg.MainButton.offClick(() => {});
+        tg.MainButton.hide();
       }
     };
-  }, [isConnected, address, chainId]);
+  }, [isConnected, address, chainId, isWebAppReady]);
 
   return (
     <div className="telegram-container">
       <div className="header">
         <h1>GardenJS Wallet</h1>
+        <p className="subtitle">Connect your wallet to continue</p>
       </div>
 
       <div className="content">
@@ -111,16 +155,37 @@ function App() {
           </div>
         ) : (
           <div className="wallet-info">
-            <h2>Connected Wallet</h2>
+            <h2>Wallet Connected</h2>
             <p className="address">
-              {address?.slice(0, 6)}...{address?.slice(-4)}
+              Address: {address?.slice(0, 6)}...{address?.slice(-4)}
             </p>
             <p className="network">
               Network: {chainId === 1 ? "Mainnet" : "Sepolia"}
             </p>
+            <p className="instruction">
+              Click the button below to confirm your wallet
+            </p>
             <button onClick={() => disconnect()} className="disconnect-button">
               Disconnect
             </button>
+          </div>
+        )}
+
+        {/* Debug Information */}
+        {debugInfo && (
+          <div
+            className="debug-info"
+            style={{
+              marginTop: "20px",
+              padding: "10px",
+              backgroundColor: "#f5f5f5",
+              borderRadius: "5px",
+              fontSize: "12px",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            <h3>Debug Info:</h3>
+            <pre>{debugInfo}</pre>
           </div>
         )}
       </div>
