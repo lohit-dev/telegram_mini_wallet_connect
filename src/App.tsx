@@ -90,7 +90,7 @@ function App() {
       tg.MainButton.show();
       tg.MainButton.enable();
 
-      const handleConfirm = () => {
+      const handleConfirm = async () => {
         const data = {
           address: address,
           chainId: chainId.toString(),
@@ -98,14 +98,15 @@ function App() {
         console.log("Sending data to Telegram:", data);
 
         try {
+          // Send data
           tg.sendData(JSON.stringify(data));
           console.log("Data sent successfully");
-          // Add a small delay before closing
-          setTimeout(() => {
-            tg.close();
-          }, 100);
+
+          // Close the app
+          console.log("Closing WebApp...");
+          window.Telegram.WebApp.close();
         } catch (error) {
-          console.error("Failed to send data:", error);
+          console.error("Error in handleConfirm:", error);
         }
       };
 
