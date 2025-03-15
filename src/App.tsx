@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+  useChainId,
+  useSignMessage,
+} from "wagmi";
 import { defaultChain } from "./wagmi";
 
 declare global {
@@ -46,6 +52,8 @@ function App() {
   const chainId = useChainId() || defaultChain.id;
   const [isWebAppReady, setIsWebAppReady] = useState(false);
 
+  const { signMessageAsync } = useSignMessage();
+
   // Initialize Telegram WebApp
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -91,18 +99,22 @@ function App() {
       tg.MainButton.enable();
 
       const handleConfirm = async () => {
-        const data = {
-          address: address,
-          chainId: chainId.toString(),
-        };
-        console.log("Sending data to Telegram:", data);
-
+        const message = `Connect wallet to GardenJS\n\nWallet: ${address}\nChain: ${chainId}`;
         try {
-          // Send data
+          const signature = await signMessageAsync({
+            message,
+            account: address,
+          });
+          console.log("Message signed successfully:", signature);
+
+          const data = {
+            address: address,
+            chainId: chainId.toString(),
+            signature: signature,
+          };
+
           tg.sendData(JSON.stringify(data));
           console.log("Data sent successfully");
-
-          // Close the app
           console.log("Closing WebApp...");
           window.Telegram.WebApp.close();
         } catch (error) {
@@ -121,7 +133,7 @@ function App() {
         tg.MainButton.hide();
       }
     };
-  }, [isConnected, address, chainId, isWebAppReady]);
+  }, [isConnected, address, chainId, isWebAppReady, signMessageAsync]);
 
   return (
     <div className="telegram-container">
