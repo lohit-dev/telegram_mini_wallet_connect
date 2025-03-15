@@ -51,6 +51,7 @@ function App() {
   const { disconnect } = useDisconnect();
   const chainId = useChainId() || defaultChain.id;
   const [isWebAppReady, setIsWebAppReady] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { signMessageAsync } = useSignMessage();
 
@@ -99,8 +100,14 @@ function App() {
       tg.MainButton.enable();
 
       const handleConfirm = async () => {
+        if (isProcessing) return; // Prevent double submission
+        setIsProcessing(true);
+        tg.MainButton.text = "PROCESSING...";
+        tg.MainButton.disable();
+
         const message = `Connect wallet to GardenJS\n\nWallet: ${address}\nChain: ${chainId}`;
         try {
+          console.log("Requesting signature...");
           const signature = await signMessageAsync({
             message,
             account: address,
@@ -113,12 +120,40 @@ function App() {
             signature: signature,
           };
 
-          tg.sendData(JSON.stringify(data));
-          console.log("Data sent successfully");
-          console.log("Closing WebApp...");
-          window.Telegram.WebApp.close();
+          console.log("Sending data to Telegram...");
+          tg.MainButton.text = "SENDING DATA...";
+
+          try {
+            tg.sendData(JSON.stringify(data));
+            console.log("Data sent successfully");
+
+            // Update button text and wait before closing
+            tg.MainButton.text = "COMPLETED ✓";
+            console.log("Waiting before closing...");
+
+            // Wait for 1.5 seconds before closing
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            console.log("Closing WebApp...");
+            window.Telegram.WebApp.close();
+          } catch (sendError) {
+            console.error("Error sending data:", sendError);
+            tg.MainButton.text = "ERROR SENDING DATA";
+            setIsProcessing(false);
+            tg.MainButton.enable();
+          }
         } catch (error) {
           console.error("Error in handleConfirm:", error);
+          tg.MainButton.text = "SIGNATURE FAILED";
+          setIsProcessing(false);
+          tg.MainButton.enable();
+
+          // Reset button text after 2 seconds
+          setTimeout(() => {
+            if (tg) {
+              tg.MainButton.text = "CONFIRM WALLET";
+            }
+          }, 2000);
         }
       };
 
@@ -133,13 +168,24 @@ function App() {
         tg.MainButton.hide();
       }
     };
-  }, [isConnected, address, chainId, isWebAppReady, signMessageAsync]);
+  }, [
+    isConnected,
+    address,
+    chainId,
+    isWebAppReady,
+    signMessageAsync,
+    isProcessing,
+  ]);
 
   return (
     <div className="telegram-container">
       <div className="header">
         <h1>GardenJS Wallet</h1>
-        <p className="subtitle">Connect your wallet to continue</p>
+        <p className="subtitle">
+          {isProcessing
+            ? "Processing your request..."
+            : "Connect your wallet to continue"}
+        </p>
       </div>
 
       <div className="content">
